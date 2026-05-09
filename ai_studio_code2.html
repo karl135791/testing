@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短倒物流运输安排 - 综合测算系统</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+        }
+
+        body { 
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; 
+            background-color: var(--bg-color); 
+            padding: 20px; 
+            color: #333; 
+            margin: 0;
+        }
+
+        /* 新增主标题样式 */
+        .main-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--secondary-color);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .main-header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            letter-spacing: 2px;
+        }
+        
+        .main-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+
+        .container { 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            display: flex; 
+            gap: 20px; 
+            flex-wrap: wrap; 
+        }
+
+        .panel { 
+            background: var(--card-bg); 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            box-sizing: border-box; 
+        }
+
+        .input-panel { 
+            flex: 1; 
+            min-width: 320px; 
+            border-top: 5px solid var(--primary-color); 
+        }
+
+        .output-panel { 
+            flex: 2; 
+            min-width: 500px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+        }
+        
+        h2 { 
+            margin-top: 0; 
+            color: var(--secondary-color); 
+            font-size: 1.4em; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        h2::before {
+            content: "📊";
+            margin-right: 10px;
+        }
+
+        h3 { 
+            margin: 0 0 15px 0; 
+            color: var(--secondary-color); 
+            font-size: 1.1em; 
+            border-left: 4px solid var(--accent-color); 
+            padding-left: 10px; 
+        }
+        
+        .form-group { 
+            margin-bottom: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+        }
+
+        label { 
+            color: #555; 
+            font-weight: 500; 
+            font-size: 0.95em; 
+            flex: 1;
+        }
+
+        input { 
+            width: 90px; 
+            padding: 10px; 
+            border: 1px solid #ccd1d9; 
+            border-radius: 8px; 
+            text-align: center; 
+            font-size: 1em; 
+            font-weight: bold; 
+            color: var(--primary-color);
+            transition: all 0.3s;
+        }
+
+        input:focus { 
+            outline: none; 
+            border-color: var(--primary-color); 
+            box-shadow: 0 0 8px rgba(52,152,219,0.2); 
+        }
+
+        .result-group { 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 12px; 
+            border: 1px solid #e1e8ed; 
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+        
+        .data-card { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 10px; 
+            border: 1px solid #edf2f7; 
+            text-align: center; 
+            transition: transform 0.2s;
+        }
+
+        .data-card:hover { transform: translateY(-2px); }
+
+        .data-title { font-size: 0.85em; color: #7f8c8d; margin-bottom: 8px; }
+        .data-value { font-size: 1.5em; font-weight: bold; color: var(--secondary-color); }
+        
+        .highlight-card { 
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); 
+            border: none; 
+        }
+        .highlight-card .data-title { color: #bdc3c7; }
+        .highlight-card .data-value { color: #f1c40f; font-size: 2.5em; }
+        
+        .warning { 
+            color: var(--accent-color); 
+            font-size: 0.8em; 
+            margin-top: 8px; 
+            font-weight: bold; 
+            display: none; 
+            background: #fff5f5;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .output-panel { min-width: 100%; }
+            .grid-3 { grid-template-columns: 1fr; }
+            .main-header h1 { font-size: 1.6em; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 新增标题区域 -->
+<div class="container">
+    <div class="main-header" style="width: 100%;">
+        <h1>短倒物流运输安排</h1>
+        <p>物流规模综合测算系统 V2.0</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- 输入面板 -->
+    <div class="panel input-panel">
+        <h2>参数输入</h2>
+        <div class="form-group"><label>日总需求量 (吨)</label><input type="number" id="demand" value="3000" oninput="calculate()"></div>
+        <div class="form-group"><label>单车载货量 (吨)</label><input type="number" id="capacity" value="30" oninput="calculate()"></div>
+        <div class="form-group"><label>单程运输时间 (分钟)</label><input type="number" id="transitTime" value="57" oninput="calculate()"></div>
+        <div class="form-group"><label>单车装车时间 (分钟)</label><input type="number" id="loadTime" value="20" oninput="calculate()"></div>
+        <div class="form-group"><label>单车卸货时间 (分钟)</label><input type="number" id="unloadTime" value="20" oninput="calculate()"></div>
+        <div class="form-group"><label>厂内外作业时长 (小时/日)</label><input type="number" id="plantHours" value="16" oninput="calculate()"></div>
+        
+        <div class="form-group"><label>司机换班交接时间 (分钟)</label><input type="number" id="shiftChange" value="60" oninput="calculate()"></div>
+        <div class="form-group"><label>车队冗余备用车率 (%)</label><input type="number" id="redundancy" value="5" oninput="calculate()"></div>
+        
+        <div class="form-group"><label>厂外装货位 (个)</label><input type="number" id="loadSlots" value="3" oninput="calculate()"></div>
+        <div class="form-group"><label>厂内卸货位 (个)</label><input type="number" id="unloadSlots" value="4" oninput="calculate()"></div>
+        <div class="form-group"><label>单循环缓冲时间 (分钟)</label><input type="number" id="buffer" value="15" oninput="calculate()"></div>
+    </div>
+
+    <!-- 输出面板 -->
+    <div class="output-panel">
+        
+        <!-- 仓库端 -->
+        <div class="result-group" style="border-top: 5px solid var(--warning-color);">
+            <h3>仓库装货端能力</h3>
+            <div class="grid-2">
+                <div class="data-card">
+                    <div class="data-title">理论最大装货车次 (趟/日)</div>
+                    <div class="data-value" id="maxLoadTrips">-</div>
+                    <div class="warning" id="loadWarning">⚠️ 仓库装载能力无法满足需求！</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-title">装货位平均利用率 (%)</div>
+                    <div id="loadUtil" class="data-value">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 厂房端 -->
+        <div class="result-group" style="border-top: 5px solid var(--success-color);">
+            <h3>厂房卸货端需求</h3>
+            <div class="grid-3">
+                <div class="data-card">
+                    <div class="data-title">总需求车次 (趟/日)</div>
+                    <div class="data-value" id="totalTrips">-</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-title">最大卸货能力 (趟/日)</div>
+                    <div class="data-value" id="maxUnloadTrips">-</div>
+                    <div class="warning" id="unloadWarning">⚠️ 厂房卸货能力无法满足需求！</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-title">每小时平均到达车次</div>
+                    <div class="data-value" id="hourlyArrivals">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 物流端 -->
+        <div class="result-group" style="border-top: 5px solid #8e44ad;">
+            <h3>物流车队规模测算 (计入耗损与冗余)</h3>
+            <div class="grid-3">
+                <div class="data-card">
+                    <div class="data-title">单车循环耗时 (min)</div>
+                    <div class="data-value" id="cycleTime">-</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-title">有效行驶时间 (min/日)</div>
+                    <div class="data-value" id="effectiveMinutes">-</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-title">单车日均跑趟数 (趟)</div>
+                    <div class="data-value" id="tripsPerTruck">-</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-title">理想车辆到达间隔 (min)</div>
+                    <div class="data-value" id="arrivalInterval">-</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-title">理论基础车辆 (辆)</div>
+                    <div class="data-value" id="baseFleetSize">-</div>
+                </div>
+                <div class="data-card highlight-card">
+                    <div class="data-title">最终规模 (含备用车)</div>
+                    <div class="data-value" id="finalFleetSize">-</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function calculate() {
+        // 1. 获取输入参数
+        const demand = parseFloat(document.getElementById('demand').value) || 0;
+        const capacity = parseFloat(document.getElementById('capacity').value) || 1;
+        const transitTime = parseFloat(document.getElementById('transitTime').value) || 0;
+        const unloadTime = parseFloat(document.getElementById('unloadTime').value) || 1;
+        const loadTime = parseFloat(document.getElementById('loadTime').value) || 1;
+        const plantHours = parseFloat(document.getElementById('plantHours').value) || 1;
+        
+        const shiftChange = parseFloat(document.getElementById('shiftChange').value) || 0;
+        const redundancy = parseFloat(document.getElementById('redundancy').value) || 0;
+
+        const unloadSlots = parseFloat(document.getElementById('unloadSlots').value) || 1;
+        const loadSlots = parseFloat(document.getElementById('loadSlots').value) || 1;
+        const buffer = parseFloat(document.getElementById('buffer').value) || 0;
+
+        const totalMinutes = plantHours * 60;
+        const effectiveMinutes = totalMinutes - shiftChange;
+
+        // 2. 厂房端：总需求车次
+        const totalTrips = Math.ceil(demand / capacity);
+        document.getElementById('totalTrips').innerText = totalTrips;
+
+        // 3. 仓库端能力
+        const maxLoadTrips = Math.floor(totalMinutes / loadTime) * loadSlots;
+        document.getElementById('maxLoadTrips').innerText = maxLoadTrips;
+        document.getElementById('loadWarning').style.display = (maxLoadTrips < totalTrips) ? 'block' : 'none';
+        document.getElementById('loadUtil').innerText = ((totalTrips / maxLoadTrips) * 100).toFixed(1) + "%";
+
+        // 4. 厂房端能力
+        const maxUnloadTrips = Math.floor(totalMinutes / unloadTime) * unloadSlots;
+        document.getElementById('maxUnloadTrips').innerText = maxUnloadTrips;
+        document.getElementById('unloadWarning').style.display = (maxUnloadTrips < totalTrips) ? 'block' : 'none';
+        
+        const hourlyArrivals = (totalTrips / plantHours).toFixed(1);
+        document.getElementById('hourlyArrivals').innerText = hourlyArrivals + " 辆/h";
+
+        // 5. 物流端计算
+        const cycleTime = (transitTime * 2) + unloadTime + loadTime + buffer;
+        document.getElementById('cycleTime').innerText = cycleTime ;
+        document.getElementById('effectiveMinutes').innerText = effectiveMinutes ;
+
+        const tripsPerTruck = Math.floor(effectiveMinutes / cycleTime);
+        document.getElementById('tripsPerTruck').innerText = tripsPerTruck ;
+
+        let baseFleetSize = 0;
+        let finalFleetSize = 0;
+        let arrivalInterval = 0;
+        
+        if (tripsPerTruck > 0) {
+            baseFleetSize = Math.ceil(totalTrips / tripsPerTruck);
+            finalFleetSize = Math.ceil(baseFleetSize * (1 + redundancy / 100));
+            arrivalInterval = (cycleTime / finalFleetSize).toFixed(1);
+        }
+        
+        document.getElementById('baseFleetSize').innerText = baseFleetSize > 0 ? baseFleetSize  : "-";
+        document.getElementById('finalFleetSize').innerText = finalFleetSize > 0 ? finalFleetSize + " 辆" : "参数不足";
+        document.getElementById('arrivalInterval').innerText = arrivalInterval ;
+    }
+    
+    calculate();
+</script>
+</body>
+</html>
