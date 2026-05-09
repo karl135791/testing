@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>物流车队规模综合测算系统</title>
+    <title>短倒物流运输安排 - 综合测算系统</title>
     <style>
         :root {
             --primary-color: #3498db;
@@ -21,6 +21,29 @@
             padding: 20px; 
             color: #333; 
             margin: 0;
+        }
+
+        /* 新增主标题样式 */
+        .main-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--secondary-color);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .main-header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            letter-spacing: 2px;
+        }
+        
+        .main-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.8;
+            font-size: 0.9em;
         }
 
         .container { 
@@ -135,7 +158,6 @@
         .highlight-card { 
             background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); 
             border: none; 
-            grid-column: span 2;
         }
         .highlight-card .data-title { color: #bdc3c7; }
         .highlight-card .data-value { color: #f1c40f; font-size: 2.5em; }
@@ -155,10 +177,19 @@
             .container { flex-direction: column; }
             .output-panel { min-width: 100%; }
             .grid-3 { grid-template-columns: 1fr; }
+            .main-header h1 { font-size: 1.6em; }
         }
     </style>
 </head>
 <body>
+
+<!-- 新增标题区域 -->
+<div class="container">
+    <div class="main-header" style="width: 100%;">
+        <h1>短倒物流运输安排</h1>
+        <p>物流规模综合测算系统 V2.0</p>
+    </div>
+</div>
 
 <div class="container">
     <!-- 输入面板 -->
@@ -166,10 +197,14 @@
         <h2>参数输入</h2>
         <div class="form-group"><label>日总需求量 (吨)</label><input type="number" id="demand" value="3000" oninput="calculate()"></div>
         <div class="form-group"><label>单车载货量 (吨)</label><input type="number" id="capacity" value="30" oninput="calculate()"></div>
-        <div class="form-group"><label>单程运输时间 (分钟)</label><input type="number" id="transitTime" value="46" oninput="calculate()"></div>
+        <div class="form-group"><label>单程运输时间 (分钟)</label><input type="number" id="transitTime" value="57" oninput="calculate()"></div>
         <div class="form-group"><label>单车装车时间 (分钟)</label><input type="number" id="loadTime" value="20" oninput="calculate()"></div>
         <div class="form-group"><label>单车卸货时间 (分钟)</label><input type="number" id="unloadTime" value="20" oninput="calculate()"></div>
         <div class="form-group"><label>厂内外作业时长 (小时/日)</label><input type="number" id="plantHours" value="16" oninput="calculate()"></div>
+        
+        <div class="form-group"><label>司机换班交接时间 (分钟)</label><input type="number" id="shiftChange" value="60" oninput="calculate()"></div>
+        <div class="form-group"><label>车队冗余备用车率 (%)</label><input type="number" id="redundancy" value="5" oninput="calculate()"></div>
+        
         <div class="form-group"><label>厂外装货位 (个)</label><input type="number" id="loadSlots" value="3" oninput="calculate()"></div>
         <div class="form-group"><label>厂内卸货位 (个)</label><input type="number" id="unloadSlots" value="4" oninput="calculate()"></div>
         <div class="form-group"><label>单循环缓冲时间 (分钟)</label><input type="number" id="buffer" value="15" oninput="calculate()"></div>
@@ -216,23 +251,31 @@
 
         <!-- 物流端 -->
         <div class="result-group" style="border-top: 5px solid #8e44ad;">
-            <h3>物流车队规模测算</h3>
-            <div class="grid-2">
+            <h3>物流车队规模测算 (计入耗损与冗余)</h3>
+            <div class="grid-3">
                 <div class="data-card">
-                    <div class="data-title">单车循环耗时 (分钟)</div>
+                    <div class="data-title">单车循环耗时 (min)</div>
                     <div class="data-value" id="cycleTime">-</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-title">有效行驶时间 (min/日)</div>
+                    <div class="data-value" id="effectiveMinutes">-</div>
                 </div>
                 <div class="data-card">
                     <div class="data-title">单车日均跑趟数 (趟)</div>
                     <div class="data-value" id="tripsPerTruck">-</div>
                 </div>
                 <div class="data-card">
-                    <div class="data-title">理想车辆到达间隔 (分钟)</div>
+                    <div class="data-title">理想车辆到达间隔 (min)</div>
                     <div class="data-value" id="arrivalInterval">-</div>
                 </div>
+                <div class="data-card">
+                    <div class="data-title">理论基础车辆 (辆)</div>
+                    <div class="data-value" id="baseFleetSize">-</div>
+                </div>
                 <div class="data-card highlight-card">
-                    <div class="data-title">建议最少车辆规模</div>
-                    <div class="data-value" id="fleetSize">-</div>
+                    <div class="data-title">最终规模 (含备用车)</div>
+                    <div class="data-value" id="finalFleetSize">-</div>
                 </div>
             </div>
         </div>
@@ -249,54 +292,58 @@
         const unloadTime = parseFloat(document.getElementById('unloadTime').value) || 1;
         const loadTime = parseFloat(document.getElementById('loadTime').value) || 1;
         const plantHours = parseFloat(document.getElementById('plantHours').value) || 1;
+        
+        const shiftChange = parseFloat(document.getElementById('shiftChange').value) || 0;
+        const redundancy = parseFloat(document.getElementById('redundancy').value) || 0;
+
         const unloadSlots = parseFloat(document.getElementById('unloadSlots').value) || 1;
         const loadSlots = parseFloat(document.getElementById('loadSlots').value) || 1;
         const buffer = parseFloat(document.getElementById('buffer').value) || 0;
 
         const totalMinutes = plantHours * 60;
+        const effectiveMinutes = totalMinutes - shiftChange;
 
-        // 2. 厂房端：总需求车次 (向上取整)
+        // 2. 厂房端：总需求车次
         const totalTrips = Math.ceil(demand / capacity);
         document.getElementById('totalTrips').innerText = totalTrips;
 
-        // 3. 仓库端：极限处理车次
+        // 3. 仓库端能力
         const maxLoadTrips = Math.floor(totalMinutes / loadTime) * loadSlots;
         document.getElementById('maxLoadTrips').innerText = maxLoadTrips;
         document.getElementById('loadWarning').style.display = (maxLoadTrips < totalTrips) ? 'block' : 'none';
         document.getElementById('loadUtil').innerText = ((totalTrips / maxLoadTrips) * 100).toFixed(1) + "%";
 
-        // 4. 厂房端：极限处理与到达率
+        // 4. 厂房端能力
         const maxUnloadTrips = Math.floor(totalMinutes / unloadTime) * unloadSlots;
         document.getElementById('maxUnloadTrips').innerText = maxUnloadTrips;
         document.getElementById('unloadWarning').style.display = (maxUnloadTrips < totalTrips) ? 'block' : 'none';
         
-        const hourlyArrivals = (totalTrips / plantHours).toFixed(2);
+        const hourlyArrivals = (totalTrips / plantHours).toFixed(1);
         document.getElementById('hourlyArrivals').innerText = hourlyArrivals + " 辆/h";
 
-        // 5. 物流端核心计算
-        // 循环时间 = (单程*2) + 装货 + 卸货 + 缓冲
+        // 5. 物流端计算
         const cycleTime = (transitTime * 2) + unloadTime + loadTime + buffer;
-        document.getElementById('cycleTime').innerText = cycleTime + " min";
+        document.getElementById('cycleTime').innerText = cycleTime ;
+        document.getElementById('effectiveMinutes').innerText = effectiveMinutes ;
 
-        // 单车日跑趟数 = 总工作分钟 / 单循环时间
-        const tripsPerTruck = Math.floor(totalMinutes / cycleTime);
-        document.getElementById('tripsPerTruck').innerText = tripsPerTruck + " 趟";
+        const tripsPerTruck = Math.floor(effectiveMinutes / cycleTime);
+        document.getElementById('tripsPerTruck').innerText = tripsPerTruck ;
 
-        let fleetSize = 0;
+        let baseFleetSize = 0;
+        let finalFleetSize = 0;
         let arrivalInterval = 0;
         
         if (tripsPerTruck > 0) {
-            // 车队规模 = 总车次 / 单车趟数 (向上取整)
-            fleetSize = Math.ceil(totalTrips / tripsPerTruck);
-            // 到达间隔 = 循环时间 / 车队规模
-            arrivalInterval = (cycleTime / fleetSize).toFixed(2);
+            baseFleetSize = Math.ceil(totalTrips / tripsPerTruck);
+            finalFleetSize = Math.ceil(baseFleetSize * (1 + redundancy / 100));
+            arrivalInterval = (cycleTime / finalFleetSize).toFixed(1);
         }
         
-        document.getElementById('fleetSize').innerText = fleetSize > 0 ? fleetSize + " 辆" : "参数不足";
-        document.getElementById('arrivalInterval').innerText = arrivalInterval + " min";
+        document.getElementById('baseFleetSize').innerText = baseFleetSize > 0 ? baseFleetSize  : "-";
+        document.getElementById('finalFleetSize').innerText = finalFleetSize > 0 ? finalFleetSize + " 辆" : "参数不足";
+        document.getElementById('arrivalInterval').innerText = arrivalInterval ;
     }
     
-    // 初始化执行一次
     calculate();
 </script>
 </body>
